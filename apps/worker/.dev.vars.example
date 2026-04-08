@@ -1,0 +1,8 @@
+# Copy this to .dev.vars and fill in your values.
+# This file is read by wrangler dev as local secrets.
+
+JWT_SECRET=any-long-random-string-at-least-32-chars
+TRAKT_CLIENT_ID=
+TRAKT_CLIENT_SECRET=
+RESEND_API_KEY=
+TMDB_API_KEY=

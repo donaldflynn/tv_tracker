@@ -6,7 +6,8 @@
     "dev": "wrangler dev",
     "build": "wrangler deploy --dry-run",
     "deploy": "wrangler deploy",
-    "db:migrate": "wrangler d1 migrations apply showtracker"
+    "db:migrate": "wrangler d1 migrations apply showtracker",
+    "db:migrate:local": "wrangler d1 migrations apply showtracker --local"
   },
   "dependencies": {
     "@showtracker/types": "workspace:*",

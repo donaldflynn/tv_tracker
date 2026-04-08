@@ -12,6 +12,13 @@ database_name = "showtracker"
 database_id = "1d61de6c-32e9-401d-bc68-aacaab9bab7b"
 migrations_dir = "migrations"
 
+[observability.logs]
+enabled = false
+invocation_logs = true
+
+[observability.traces]
+enabled = false
+
 [vars]
 TRAKT_REDIRECT_URI = "https://your-domain.com/api/auth/callback"
 EMAIL_FROM = "notifications@your-domain.com"
