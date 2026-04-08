@@ -3,6 +3,8 @@ import type {
   TraktSearchResult,
   TraktShowFull,
   TraktSeason,
+  TraktEpisode,
+  TraktWatchProgress,
   TraktTokenResponse,
   TraktMe,
 } from '@showtracker/types';
@@ -127,6 +129,58 @@ export class TraktClient {
     return this.get<TraktSeason[]>(`/shows/${idOrSlug}/seasons?extended=full`);
   }
 
+  getSeasonEpisodes(idOrSlug: string | number, season: number): Promise<TraktEpisode[]> {
+    return this.get<TraktEpisode[]>(`/shows/${idOrSlug}/seasons/${season}?extended=full`);
+  }
+
+  getShowWatchedProgress(idOrSlug: string | number): Promise<TraktWatchProgress> {
+    return this.get<TraktWatchProgress>(`/shows/${idOrSlug}/progress/watched`);
+  }
+
+  async watchEpisode(episodeTraktId: number, watchedAt: string): Promise<void> {
+    const res = await fetch(`${API_BASE}/sync/history`, {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify({
+        episodes: [{ watched_at: watchedAt, ids: { trakt: episodeTraktId } }],
+      }),
+    });
+    if (!res.ok) throw new Error(`watchEpisode failed (${res.status})`);
+  }
+
+  async unwatchEpisode(episodeTraktId: number): Promise<void> {
+    const res = await fetch(`${API_BASE}/sync/history/remove`, {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify({
+        episodes: [{ ids: { trakt: episodeTraktId } }],
+      }),
+    });
+    if (!res.ok) throw new Error(`unwatchEpisode failed (${res.status})`);
+  }
+
+  async watchSeason(showTraktId: number, season: number, watchedAt: string): Promise<void> {
+    const res = await fetch(`${API_BASE}/sync/history`, {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify({
+        shows: [{ ids: { trakt: showTraktId }, seasons: [{ number: season, watched_at: watchedAt }] }],
+      }),
+    });
+    if (!res.ok) throw new Error(`watchSeason failed (${res.status})`);
+  }
+
+  async unwatchSeason(showTraktId: number, season: number): Promise<void> {
+    const res = await fetch(`${API_BASE}/sync/history/remove`, {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify({
+        shows: [{ ids: { trakt: showTraktId }, seasons: [{ number: season }] }],
+      }),
+    });
+    if (!res.ok) throw new Error(`unwatchSeason failed (${res.status})`);
+  }
+
   // ── Static helpers ───────────────────────────────────────────────────────
 
   static countRegularSeasons(seasons: TraktSeason[]): number {
@@ -195,5 +249,31 @@ export async function fetchTmdbPoster(
       : null;
   } catch {
     return null;
+  }
+}
+
+// Returns a map of episode_number → still URL for all episodes in a season
+export async function fetchSeasonStills(
+  tmdbShowId: number,
+  season: number,
+  apiKey: string,
+): Promise<Map<number, string>> {
+  try {
+    const res = await fetch(
+      `https://api.themoviedb.org/3/tv/${tmdbShowId}/season/${season}?api_key=${apiKey}`,
+    );
+    if (!res.ok) return new Map();
+    const data = (await res.json()) as {
+      episodes?: Array<{ episode_number: number; still_path?: string | null }>;
+    };
+    const map = new Map<number, string>();
+    for (const ep of data.episodes ?? []) {
+      if (ep.still_path) {
+        map.set(ep.episode_number, `https://image.tmdb.org/t/p/w300${ep.still_path}`);
+      }
+    }
+    return map;
+  } catch {
+    return new Map();
   }
 }

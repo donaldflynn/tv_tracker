@@ -66,6 +66,31 @@ export interface TraktSeason {
   aired_episodes?: number;
 }
 
+export interface TraktEpisode {
+  season: number;
+  number: number;
+  title: string;
+  overview?: string;
+  first_aired?: string | null;
+  runtime?: number;
+  ids: { trakt: number; tvdb?: number; imdb?: string; tmdb?: number };
+}
+
+export interface TraktWatchProgress {
+  aired: number;
+  completed: number;
+  seasons: Array<{
+    number: number;
+    aired: number;
+    completed: number;
+    episodes: Array<{
+      number: number;
+      completed: boolean;
+      last_watched_at: string | null;
+    }>;
+  }>;
+}
+
 export interface TraktSearchResult {
   type: 'show';
   score: number;
@@ -110,8 +135,32 @@ export interface ShowSearchResult {
   in_tracker: boolean;
 }
 
+export interface ShowSeasonSummary {
+  number: number;
+  title?: string;
+  overview?: string;
+  first_aired?: string | null;
+  episode_count?: number;
+  aired_episodes?: number;
+  watched_count: number;
+}
+
+export interface EpisodeDetail {
+  season: number;
+  number: number;
+  title: string;
+  overview?: string;
+  first_aired?: string | null;
+  runtime?: number;
+  trakt_id: number;
+  still_url?: string | null;
+  watched: boolean;
+  watched_at?: string | null;
+}
+
 export interface ShowDetail {
   trakt_id: number;
+  tmdb_id?: number;
   title: string;
   year: number;
   slug: string;
@@ -122,7 +171,7 @@ export interface ShowDetail {
   genres?: string[];
   rating?: number;
   season_count: number;
-  seasons: TraktSeason[];
+  seasons: ShowSeasonSummary[];
   in_tracker: boolean;
   notifications_enabled: boolean;
   show_poster_url: string | null;

@@ -4,6 +4,7 @@ import { ArrowLeft, Bell, BellOff, Plus, Check, Star, Clock, Tv2 } from 'lucide-
 import { toast } from 'sonner';
 import { api } from '../lib/api';
 import { NotificationToggle } from '../components/NotificationToggle';
+import { SeasonPanel } from '../components/SeasonPanel';
 import type { ShowDetail, NotificationRow } from '@showtracker/types';
 
 export function ShowDetailPage() {
@@ -112,7 +113,6 @@ export function ShowDetailPage() {
               </div>
             </div>
 
-            {/* Meta row */}
             <div className="flex flex-wrap gap-4 text-sm">
               <div className="flex items-center gap-1.5 text-muted">
                 <Tv2 size={14} className="text-accent/70" />
@@ -149,7 +149,7 @@ export function ShowDetailPage() {
               <p className="text-sm text-muted leading-relaxed max-w-prose">{show.overview}</p>
             )}
 
-            {/* Tracker actions */}
+            {/* Notification actions */}
             <div className="flex items-center gap-3 mt-2">
               {show.in_tracker ? (
                 <>
@@ -183,39 +183,15 @@ export function ShowDetailPage() {
           </div>
         </div>
 
-        {/* Seasons list */}
+        {/* Seasons accordion */}
         {show.seasons.length > 0 && (
           <section className="mt-10">
             <h2 className="text-sm font-semibold text-muted uppercase tracking-widest mb-4">
               Seasons
             </h2>
-            <div className="grid gap-2">
+            <div className="flex flex-col gap-2">
               {show.seasons.map((season) => (
-                <div
-                  key={season.number}
-                  className="flex items-center justify-between px-4 py-3 bg-surface rounded-lg border border-border"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="w-8 h-8 rounded-lg bg-surface-high flex items-center justify-center text-xs font-bold text-accent">
-                      {season.number}
-                    </span>
-                    <div>
-                      <p className="text-sm font-medium text-text">
-                        {season.title ?? `Season ${season.number}`}
-                      </p>
-                      {season.first_aired && (
-                        <p className="text-xs text-muted">
-                          {new Intl.DateTimeFormat('en', { year: 'numeric', month: 'short' }).format(
-                            new Date(season.first_aired),
-                          )}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  {season.episode_count != null && (
-                    <span className="text-xs text-muted">{season.episode_count} eps</span>
-                  )}
-                </div>
+                <SeasonPanel key={season.number} show={show} season={season} />
               ))}
             </div>
           </section>
