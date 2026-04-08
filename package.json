@@ -8,7 +8,6 @@
     "dev:worker": "pnpm --filter worker dev",
     "build:web": "pnpm --filter web build",
     "build:worker": "pnpm --filter worker build",
-    "deploy:worker": "pnpm --filter worker deploy",
-    "deploy:web": "pnpm --filter web deploy"
+    "deploy": "pnpm build:web && pnpm --filter worker deploy"
   }
 }

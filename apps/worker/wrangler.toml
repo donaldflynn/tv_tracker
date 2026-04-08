@@ -9,7 +9,7 @@ crons = ["0 8 * * *"]
 [[d1_databases]]
 binding = "DB"
 database_name = "showtracker"
-database_id = "REPLACE_WITH_YOUR_D1_ID"
+database_id = "1d61de6c-32e9-401d-bc68-aacaab9bab7b"
 migrations_dir = "migrations"
 
 [vars]
