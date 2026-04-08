@@ -161,3 +161,45 @@ export async function touchLastChecked(db: D1Database, id: number): Promise<void
     .bind(id)
     .run();
 }
+
+// ── Pending auth ──────────────────────────────────────────────────────────────
+
+export interface PendingAuthRow {
+  id: string;
+  trakt_slug: string;
+  access_token: string;
+  refresh_token: string;
+  token_expires_at: number;
+  expires_at: number;
+}
+
+export async function createPendingAuth(
+  db: D1Database,
+  data: Omit<PendingAuthRow, 'id' | 'expires_at'>,
+): Promise<string> {
+  const id = crypto.randomUUID();
+  const expiresAt = Math.floor(Date.now() / 1000) + 900; // 15 minutes
+  await db
+    .prepare(
+      `INSERT INTO pending_auth (id, trakt_slug, access_token, refresh_token, token_expires_at, expires_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    )
+    .bind(id, data.trakt_slug, data.access_token, data.refresh_token, data.token_expires_at, expiresAt)
+    .run();
+  return id;
+}
+
+export async function consumePendingAuth(
+  db: D1Database,
+  id: string,
+): Promise<PendingAuthRow | null> {
+  const row = await db
+    .prepare('SELECT * FROM pending_auth WHERE id = ? AND expires_at > unixepoch()')
+    .bind(id)
+    .first<PendingAuthRow>();
+
+  if (row) {
+    await db.prepare('DELETE FROM pending_auth WHERE id = ?').bind(id).run();
+  }
+  return row ?? null;
+}

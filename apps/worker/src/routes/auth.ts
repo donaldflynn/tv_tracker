@@ -2,12 +2,10 @@ import { Hono } from 'hono';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import {
   createSessionToken,
-  createPendingAuthToken,
-  verifyPendingAuthToken,
   createSignedState,
   verifySignedState,
 } from '../lib/jwt';
-import { getUserBySlug, createUser, updateUserTokens } from '../lib/db';
+import { getUserBySlug, createUser, updateUserTokens, createPendingAuth, consumePendingAuth } from '../lib/db';
 import { TraktClient } from '../lib/trakt';
 import type { AppEnv } from '../types';
 import { requireAuth } from '../middleware/auth';
@@ -83,54 +81,40 @@ auth.get('/callback', async (c) => {
     return c.redirect('/');
   }
 
-  // New user — store pending auth in a signed cookie, redirect to setup
-  const pendingToken = await createPendingAuthToken(
-    {
-      trakt_slug: me.username,
-      access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token,
-      token_expires_at: tokenExpiresAt,
-    },
-    c.env.JWT_SECRET,
-  );
-
-  setCookie(c, 'pending_auth', pendingToken, {
-    httpOnly: true,
-    sameSite: 'Lax',
-    secure: true,
-    maxAge: 900,
-    path: '/',
+  // New user — store auth in D1, put only the opaque ID in the URL
+  const pendingId = await createPendingAuth(c.env.DB, {
+    trakt_slug: me.username,
+    access_token: tokens.access_token,
+    refresh_token: tokens.refresh_token,
+    token_expires_at: tokenExpiresAt,
   });
 
-  return c.redirect('/setup');
+  return c.redirect(`/setup?token=${pendingId}`);
 });
 
 // ── POST /api/auth/setup ──────────────────────────────────────────────────────
 
 auth.post('/setup', async (c) => {
-  const pendingToken = getCookie(c, 'pending_auth');
-  if (!pendingToken) {
-    return c.json({ error: 'No pending auth session' }, 400);
-  }
-
-  const pending = await verifyPendingAuthToken(pendingToken, c.env.JWT_SECRET);
-  if (!pending) {
-    return c.json({ error: 'Pending auth expired or invalid' }, 400);
-  }
-
-  let body: { email?: string };
+  let body: { email?: string; token?: string };
   try {
     body = await c.req.json();
   } catch {
     return c.json({ error: 'Invalid request body' }, 400);
   }
 
+  if (!body.token) {
+    return c.json({ error: 'No pending auth session' }, 400);
+  }
+
+  const pending = await consumePendingAuth(c.env.DB, body.token);
+  if (!pending) {
+    return c.json({ error: 'Pending auth expired or invalid' }, 400);
+  }
+
   const email = body.email?.trim().toLowerCase();
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return c.json({ error: 'Valid email required' }, 400);
   }
-
-  deleteCookie(c, 'pending_auth', { path: '/' });
 
   const userId = await createUser(c.env.DB, {
     trakt_slug: pending.trakt_slug,

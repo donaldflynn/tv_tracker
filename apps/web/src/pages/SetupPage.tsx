@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { Mail, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, ApiError } from '../lib/api';
@@ -8,14 +8,16 @@ export function SetupPage() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!email.trim() || !token) return;
 
     setLoading(true);
     try {
-      await api.post('/auth/setup', { email: email.trim() });
+      await api.post('/auth/setup', { email: email.trim(), token });
       navigate('/', { replace: true });
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Something went wrong';
