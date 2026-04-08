@@ -20,7 +20,7 @@ invocation_logs = true
 enabled = false
 
 [vars]
-TRAKT_REDIRECT_URI = "https://your-domain.com/api/auth/callback"
+TRAKT_REDIRECT_URI = "https://tv.dflynn.uk/api/auth/callback"
 EMAIL_FROM = "notifications@your-domain.com"
 
 # Secrets — set with: wrangler secret put <KEY>
