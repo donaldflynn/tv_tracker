@@ -5,11 +5,13 @@ import {
   updateNotificationEnabled,
   deleteNotification,
   getNotification,
+  getUserById,
 } from '../lib/db';
 import { TraktClient, fetchTmdbPoster } from '../lib/trakt';
 import type { AppEnv } from '../types';
 import { requireAuth } from '../middleware/auth';
 import type { NotificationRow } from '@showtracker/types';
+import { sendEpisodeDigest, type EpisodeTrigger, type UpcomingEntry } from '../lib/email';
 
 const notifications = new Hono<AppEnv>();
 
@@ -26,6 +28,86 @@ function toRow(n: import('@showtracker/types').DbShowNotification): Notification
     created_at: n.created_at,
   };
 }
+
+// ── POST /api/notifications/test-email ───────────────────────────────────────
+
+notifications.post('/test-email', requireAuth, async (c) => {
+  const userId = c.get('userId');
+  const user = await getUserById(c.env.DB, userId);
+  if (!user) return c.json({ error: 'User not found' }, 404);
+
+  const now = new Date();
+  const nextWeek = new Date(now);
+  nextWeek.setDate(now.getDate() + 7);
+  const inTwoWeeks = new Date(now);
+  inTwoWeeks.setDate(now.getDate() + 14);
+
+  const sampleTriggers: EpisodeTrigger[] = [
+    {
+      showTitle: 'The Bear',
+      showSlug: 'the-bear',
+      reason: 'season_premiere',
+      episode: {
+        season: 4,
+        number: 1,
+        title: 'Premiere',
+        overview: 'Carmy and the crew face new challenges as the restaurant enters its next chapter.',
+        first_aired: now.toISOString(),
+      },
+    },
+    {
+      showTitle: 'Severance',
+      showSlug: 'severance',
+      reason: 'after_break',
+      episode: {
+        season: 2,
+        number: 5,
+        title: 'Chikhai Bardo',
+        overview: 'Mark navigates the growing mysteries of Lumon Industries.',
+        first_aired: now.toISOString(),
+      },
+      daysSince: 127,
+    },
+  ];
+
+  const sampleUpcoming: UpcomingEntry[] = [
+    {
+      showTitle: 'Succession',
+      showSlug: 'succession',
+      episode: {
+        season: 5,
+        number: 1,
+        title: 'The Rehearsal',
+        first_aired: nextWeek.toISOString(),
+      },
+    },
+    {
+      showTitle: 'The White Lotus',
+      showSlug: 'the-white-lotus',
+      episode: {
+        season: 3,
+        number: 4,
+        title: 'New Arrivals',
+        first_aired: inTwoWeeks.toISOString(),
+      },
+    },
+  ];
+
+  try {
+    await sendEpisodeDigest({
+      resendApiKey: c.env.RESEND_API_KEY,
+      from: c.env.EMAIL_FROM,
+      to: user.email,
+      triggers: sampleTriggers,
+      upcoming: sampleUpcoming,
+      isTest: true,
+    });
+    return c.json({ ok: true, sent_to: user.email });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    return c.json({ error: message }, 500);
+  }
+});
 
 // ── GET /api/notifications ────────────────────────────────────────────────────
 

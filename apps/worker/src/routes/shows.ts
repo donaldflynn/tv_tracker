@@ -3,7 +3,7 @@ import { TraktClient, fetchTmdbPoster, fetchSeasonStills } from '../lib/trakt';
 import { getNotificationsByUser, bulkInsertUntracked } from '../lib/db';
 import type { AppEnv } from '../types';
 import { requireAuth } from '../middleware/auth';
-import type { WatchedShow, ShowSearchResult, ShowDetail, EpisodeDetail, UpcomingShow } from '@showtracker/types';
+import type { WatchedShow, ShowSearchResult, ShowDetail, EpisodeDetail, ShowEpisodeEntry, ShowSchedule } from '@showtracker/types';
 
 const shows = new Hono<AppEnv>();
 
@@ -168,6 +168,79 @@ shows.get('/search', requireAuth, async (c) => {
     }));
 
   return c.json(cleaned);
+});
+
+// ── GET /api/shows/upcoming ───────────────────────────────────────────────────
+
+shows.get('/upcoming', requireAuth, async (c) => {
+  const userId = c.get('userId');
+  const cacheKey = `schedule:${userId}`;
+  const cached = getCache<ShowSchedule>(cacheKey);
+  if (cached) return c.json(cached);
+
+  const trakt = makeClient(c);
+  const notifications = await getNotificationsByUser(c.env.DB, userId);
+
+  if (notifications.length === 0) return c.json({ upcoming: [], recent: [] });
+
+  const now = new Date();
+  const cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); // 30 days ago
+
+  function toEntry(
+    n: (typeof notifications)[number],
+    ep: import('@showtracker/types').TraktEpisode,
+  ): ShowEpisodeEntry {
+    return {
+      trakt_id: n.trakt_show_id,
+      title: n.show_title,
+      slug: n.show_slug,
+      show_poster_url: n.show_poster_url,
+      notifications_enabled: n.notifications_enabled === 1,
+      episode: {
+        season: ep.season,
+        number: ep.number,
+        title: ep.title,
+        first_aired: ep.first_aired!,
+        overview: ep.overview,
+      },
+    };
+  }
+
+  // Fetch next + last episode for every tracked show in parallel
+  const settled = await Promise.allSettled(
+    notifications.map(async (n) => {
+      const [next, last] = await Promise.all([
+        trakt.getNextEpisode(n.trakt_show_id),
+        trakt.getLastEpisode(n.trakt_show_id),
+      ]);
+      return { n, next, last };
+    }),
+  );
+
+  const upcoming: ShowEpisodeEntry[] = [];
+  const recent: ShowEpisodeEntry[] = [];
+
+  for (const r of settled) {
+    if (r.status !== 'fulfilled') continue;
+    const { n, next, last } = r.value;
+
+    if (next?.first_aired && new Date(next.first_aired) > now) {
+      upcoming.push(toEntry(n, next));
+    }
+    if (last?.first_aired) {
+      const aired = new Date(last.first_aired);
+      if (aired <= now && aired >= cutoff) {
+        recent.push(toEntry(n, last));
+      }
+    }
+  }
+
+  upcoming.sort((a, b) => new Date(a.episode.first_aired).getTime() - new Date(b.episode.first_aired).getTime());
+  recent.sort((a, b) => new Date(b.episode.first_aired).getTime() - new Date(a.episode.first_aired).getTime());
+
+  const result: ShowSchedule = { upcoming, recent };
+  setCache(cacheKey, result);
+  return c.json(result);
 });
 
 // ── GET /api/shows/:id ────────────────────────────────────────────────────────
@@ -335,53 +408,6 @@ shows.post('/:id/watch', requireAuth, async (c) => {
   cache.delete(`watched:${userId}`);
 
   return c.json({ ok: true });
-});
-
-// ── GET /api/shows/upcoming ───────────────────────────────────────────────────
-
-shows.get('/upcoming', requireAuth, async (c) => {
-  const userId = c.get('userId');
-  const cacheKey = `upcoming:${userId}`;
-  const cached = getCache<UpcomingShow[]>(cacheKey);
-  if (cached) return c.json(cached);
-
-  const trakt = makeClient(c);
-  const notifications = await getNotificationsByUser(c.env.DB, userId);
-
-  if (notifications.length === 0) return c.json([]);
-
-  const now = new Date();
-
-  // Fetch next episode for all tracked shows in parallel
-  const settled = await Promise.allSettled(
-    notifications.map(async (n) => {
-      const next = await trakt.getNextEpisode(n.trakt_show_id);
-      if (!next?.first_aired) return null;
-      if (new Date(next.first_aired) <= now) return null; // already aired
-      return {
-        trakt_id: n.trakt_show_id,
-        title: n.show_title,
-        slug: n.show_slug,
-        show_poster_url: n.show_poster_url,
-        notifications_enabled: n.notifications_enabled === 1,
-        next_episode: {
-          season: next.season,
-          number: next.number,
-          title: next.title,
-          first_aired: next.first_aired,
-          overview: next.overview,
-        },
-      } satisfies UpcomingShow;
-    }),
-  );
-
-  const result: UpcomingShow[] = settled
-    .filter((r): r is PromiseFulfilledResult<UpcomingShow> => r.status === 'fulfilled' && r.value !== null)
-    .map((r) => r.value)
-    .sort((a, b) => new Date(a.next_episode.first_aired).getTime() - new Date(b.next_episode.first_aired).getTime());
-
-  setCache(cacheKey, result);
-  return c.json(result);
 });
 
 export { shows as showRoutes };

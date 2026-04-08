@@ -215,6 +215,18 @@ export class TraktClient {
     return res.json() as Promise<TraktEpisode>;
   }
 
+  // Returns the most recently aired episode, or null if none
+  async getLastEpisode(idOrSlug: string | number): Promise<TraktEpisode | null> {
+    let res = await this.doFetch(`/shows/${idOrSlug}/last_episode?extended=full`);
+    if (res.status === 401) {
+      await this.refreshTokens();
+      res = await this.doFetch(`/shows/${idOrSlug}/last_episode?extended=full`);
+    }
+    if (res.status === 204 || res.status === 404) return null;
+    if (!res.ok) return null;
+    return res.json() as Promise<TraktEpisode>;
+  }
+
   // ── Static helpers ───────────────────────────────────────────────────────
 
   static countRegularSeasons(seasons: TraktSeason[]): number {

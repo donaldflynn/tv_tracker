@@ -183,16 +183,35 @@ export async function bulkInsertUntracked(
   await db.batch(stmts);
 }
 
-export async function initializeShowSeason(
+export async function initializeShowData(
   db: D1Database,
   id: number,
   lastKnownSeason: number,
+  lastEpisodeAiredAt: string | null,
 ): Promise<void> {
   await db
     .prepare(
-      'UPDATE show_notifications SET last_known_season = ?, needs_season_init = 0, last_checked_at = unixepoch() WHERE id = ?',
+      `UPDATE show_notifications
+         SET last_known_season = ?, last_episode_aired_at = ?, needs_season_init = 0, last_checked_at = unixepoch()
+       WHERE id = ?`,
     )
-    .bind(lastKnownSeason, id)
+    .bind(lastKnownSeason, lastEpisodeAiredAt, id)
+    .run();
+}
+
+export async function updateShowEpisodeTracking(
+  db: D1Database,
+  id: number,
+  lastKnownSeason: number,
+  lastEpisodeAiredAt: string,
+): Promise<void> {
+  await db
+    .prepare(
+      `UPDATE show_notifications
+         SET last_known_season = ?, last_episode_aired_at = ?, last_checked_at = unixepoch()
+       WHERE id = ?`,
+    )
+    .bind(lastKnownSeason, lastEpisodeAiredAt, id)
     .run();
 }
 
