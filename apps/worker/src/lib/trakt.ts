@@ -9,7 +9,12 @@ import type {
 import { updateUserTokens } from './db';
 
 const API_BASE = 'https://api.trakt.tv';
-const OAUTH_BASE = 'https://trakt.tv';
+const OAUTH_BASE = 'https://api.trakt.tv'; // token exchange on api subdomain avoids WAF on trakt.tv
+
+const SERVER_HEADERS = {
+  'Content-Type': 'application/json',
+  'User-Agent': 'ShowTracker/1.0 (https://github.com/showtracker)',
+};
 
 interface TraktClientOptions {
   clientId: string;
@@ -59,7 +64,7 @@ export class TraktClient {
   private async refreshTokens(): Promise<void> {
     const res = await fetch(`${OAUTH_BASE}/oauth/token`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: SERVER_HEADERS,
       body: JSON.stringify({
         refresh_token: this.refreshToken,
         client_id: this.clientId,
@@ -136,7 +141,7 @@ export class TraktClient {
   }): Promise<TraktTokenResponse> {
     const res = await fetch(`${OAUTH_BASE}/oauth/token`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: SERVER_HEADERS,
       body: JSON.stringify({
         code: params.code,
         client_id: params.clientId,
