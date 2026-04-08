@@ -15,7 +15,7 @@ const OAUTH_BASE = 'https://api.trakt.tv'; // token exchange on api subdomain av
 
 const SERVER_HEADERS = {
   'Content-Type': 'application/json',
-  'User-Agent': 'ShowTracker/1.0 (https://github.com/showtracker)',
+  'User-Agent': 'FlynnFlix Tracker/1.0',
 };
 
 interface TraktClientOptions {

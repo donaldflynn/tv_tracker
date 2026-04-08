@@ -60,7 +60,7 @@ export function DashboardPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Tv2 size={20} className="text-accent" />
-            <span className="font-bold text-text tracking-tight">ShowTracker</span>
+            <span className="font-bold text-text tracking-tight">FlynnFlix</span>
           </div>
 
           <div className="flex items-center gap-3">

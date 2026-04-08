@@ -20,6 +20,7 @@ export interface DbShowNotification {
   notifications_enabled: number; // 0 | 1
   last_known_season: number;
   needs_season_init: number; // 0 | 1 — if 1, cron sets season count without notifying
+  last_episode_aired_at: string | null; // ISO string of last known aired episode
   last_checked_at: number | null;
   created_at: number;
 }
@@ -177,13 +178,13 @@ export interface ShowDetail {
   show_poster_url: string | null;
 }
 
-export interface UpcomingShow {
+export interface ShowEpisodeEntry {
   trakt_id: number;
   title: string;
   slug: string;
   show_poster_url: string | null;
   notifications_enabled: boolean;
-  next_episode: {
+  episode: {
     season: number;
     number: number;
     title: string;
@@ -191,6 +192,14 @@ export interface UpcomingShow {
     overview?: string;
   };
 }
+
+export interface ShowSchedule {
+  upcoming: ShowEpisodeEntry[];
+  recent: ShowEpisodeEntry[];
+}
+
+/** @deprecated use ShowEpisodeEntry */
+export type UpcomingShow = ShowEpisodeEntry & { next_episode: ShowEpisodeEntry['episode'] };
 
 export interface NotificationRow {
   id: number;

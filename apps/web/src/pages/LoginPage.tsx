@@ -54,7 +54,7 @@ export function LoginPage() {
               />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-text tracking-tight">ShowTracker</h1>
+          <h1 className="text-2xl font-bold text-text tracking-tight">FlynnFlix Tracker</h1>
           <p className="text-sm text-muted text-center leading-relaxed">
             Get notified when new seasons drop.
           </p>

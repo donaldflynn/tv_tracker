@@ -55,9 +55,9 @@ function buildSubject(triggers: EpisodeTrigger[], isTest: boolean): string {
     const label = t.reason === 'season_premiere'
       ? `Season ${t.episode.season} premiere`
       : 'Returns after a break';
-    return `${prefix}${t.showTitle} — ${label} · ShowTracker`;
+    return `${prefix}${t.showTitle} — ${label} · FlynnFlix Tracker`;
   }
-  return `${prefix}${triggers.length} shows with new episodes · ShowTracker`;
+  return `${prefix}${triggers.length} shows with new episodes · FlynnFlix Tracker`;
 }
 
 function triggerCard(t: EpisodeTrigger): string {
@@ -131,7 +131,7 @@ function buildHtml(params: SendDigestParams): string {
       <table width="100%" style="max-width:560px" cellpadding="0" cellspacing="0">
         <!-- Logo -->
         <tr><td style="padding-bottom:24px">
-          <span style="color:#7c3aed;font-weight:800;font-size:16px;letter-spacing:-0.5px">ShowTracker</span>
+          <span style="color:#7c3aed;font-weight:800;font-size:16px;letter-spacing:-0.5px">FlynnFlix Tracker</span>
         </td></tr>
 
         ${testBanner ? `<tr><td>${testBanner}</td></tr>` : ''}
@@ -152,7 +152,7 @@ function buildHtml(params: SendDigestParams): string {
         <!-- Footer -->
         <tr><td style="padding-top:32px;border-top:1px solid #1a1a1a;margin-top:32px">
           <p style="font-size:11px;color:#52525b;margin:0;line-height:1.6">
-            You're receiving this from ShowTracker because you have notifications enabled for these shows.<br>
+            You're receiving this from FlynnFlix Tracker because you have notifications enabled for these shows.<br>
             To manage notifications, visit your dashboard.
           </p>
         </td></tr>

@@ -17,7 +17,7 @@ export function SearchPage() {
           </Link>
           <div className="flex items-center gap-2 ml-2">
             <Tv2 size={18} className="text-accent" />
-            <span className="font-bold text-text tracking-tight text-sm">ShowTracker</span>
+            <span className="font-bold text-text tracking-tight text-sm">FlynnFlix</span>
           </div>
         </div>
       </header>
