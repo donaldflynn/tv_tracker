@@ -177,6 +177,21 @@ export interface ShowDetail {
   show_poster_url: string | null;
 }
 
+export interface UpcomingShow {
+  trakt_id: number;
+  title: string;
+  slug: string;
+  show_poster_url: string | null;
+  notifications_enabled: boolean;
+  next_episode: {
+    season: number;
+    number: number;
+    title: string;
+    first_aired: string;
+    overview?: string;
+  };
+}
+
 export interface NotificationRow {
   id: number;
   trakt_show_id: number;

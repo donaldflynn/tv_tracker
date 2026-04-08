@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
-import { Search, LogOut, Tv2 } from 'lucide-react';
+import { Search, LogOut, Tv2, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
@@ -8,8 +9,31 @@ import { ShowCard } from '../components/ShowCard';
 import { EmptyState } from '../components/EmptyState';
 import type { WatchedShow } from '@showtracker/types';
 
+type SortKey = 'latest_released' | 'first_released' | 'recently_watched';
+
+const SORT_LABELS: Record<SortKey, string> = {
+  latest_released: 'Latest released',
+  first_released: 'First released',
+  recently_watched: 'Recently watched',
+};
+
+function sortShows(shows: WatchedShow[], key: SortKey): WatchedShow[] {
+  return [...shows].sort((a, b) => {
+    switch (key) {
+      case 'latest_released':
+        return (b.year ?? 0) - (a.year ?? 0);
+      case 'first_released':
+        return (a.year ?? 0) - (b.year ?? 0);
+      case 'recently_watched':
+        return new Date(b.last_watched_at).getTime() - new Date(a.last_watched_at).getTime();
+    }
+  });
+}
+
 export function DashboardPage() {
   const { data: me } = useAuth();
+  const [sort, setSort] = useState<SortKey>('latest_released');
+
   const { data: shows, isLoading, isError } = useQuery<WatchedShow[]>({
     queryKey: ['shows', 'watched'],
     queryFn: () => api.get<WatchedShow[]>('/shows/watched'),
@@ -25,8 +49,9 @@ export function DashboardPage() {
     }
   };
 
-  const notificationsOn = shows?.filter((s) => s.notifications_enabled) ?? [];
-  const notificationsOff = shows?.filter((s) => !s.notifications_enabled) ?? [];
+  const sorted = shows ? sortShows(shows, sort) : [];
+  const notificationsOn = sorted.filter((s) => s.notifications_enabled);
+  const notificationsOff = sorted.filter((s) => !s.notifications_enabled);
 
   return (
     <div className="min-h-screen bg-background">
@@ -39,6 +64,14 @@ export function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            <Link
+              to="/upcoming"
+              className="flex items-center gap-1.5 text-sm text-muted hover:text-text transition-colors px-2 py-1 rounded-lg hover:bg-surface"
+            >
+              <Calendar size={15} />
+              <span className="hidden sm:inline">Upcoming</span>
+            </Link>
+
             <Link
               to="/search"
               className="flex items-center gap-1.5 text-sm text-muted hover:text-text transition-colors px-2 py-1 rounded-lg hover:bg-surface"
@@ -88,40 +121,63 @@ export function DashboardPage() {
           <>
             {shows?.length === 0 && <EmptyState />}
 
-            {notificationsOn.length > 0 && (
-              <section className="mb-12">
-                <div className="flex items-center justify-between mb-5">
-                  <h2 className="text-sm font-semibold text-muted uppercase tracking-widest">
-                    Watching
-                    <span className="ml-2 text-accent">{notificationsOn.length}</span>
-                  </h2>
-                  <Link
-                    to="/search"
-                    className="flex items-center gap-1 text-xs text-muted hover:text-accent transition-colors"
-                  >
-                    <Search size={12} /> Add show
-                  </Link>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                  {notificationsOn.map((show) => (
-                    <ShowCard key={show.trakt_id} show={show} />
+            {shows && shows.length > 0 && (
+              <>
+                {/* Sort controls */}
+                <div className="flex items-center justify-end gap-2 mb-6">
+                  <span className="text-xs text-muted">Sort:</span>
+                  {(Object.keys(SORT_LABELS) as SortKey[]).map((key) => (
+                    <button
+                      key={key}
+                      onClick={() => setSort(key)}
+                      className={[
+                        'px-2.5 py-1 rounded-lg text-xs font-medium transition-colors',
+                        sort === key
+                          ? 'bg-accent text-black'
+                          : 'bg-surface text-muted hover:text-text border border-border',
+                      ].join(' ')}
+                    >
+                      {SORT_LABELS[key]}
+                    </button>
                   ))}
                 </div>
-              </section>
-            )}
 
-            {notificationsOff.length > 0 && (
-              <section>
-                <h2 className="text-sm font-semibold text-muted uppercase tracking-widest mb-5">
-                  Muted
-                  <span className="ml-2 text-muted/50">{notificationsOff.length}</span>
-                </h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                  {notificationsOff.map((show) => (
-                    <ShowCard key={show.trakt_id} show={show} />
-                  ))}
-                </div>
-              </section>
+                {notificationsOn.length > 0 && (
+                  <section className="mb-12">
+                    <div className="flex items-center justify-between mb-5">
+                      <h2 className="text-sm font-semibold text-muted uppercase tracking-widest">
+                        Watching
+                        <span className="ml-2 text-accent">{notificationsOn.length}</span>
+                      </h2>
+                      <Link
+                        to="/search"
+                        className="flex items-center gap-1 text-xs text-muted hover:text-accent transition-colors"
+                      >
+                        <Search size={12} /> Add show
+                      </Link>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                      {notificationsOn.map((show) => (
+                        <ShowCard key={show.trakt_id} show={show} />
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {notificationsOff.length > 0 && (
+                  <section>
+                    <h2 className="text-sm font-semibold text-muted uppercase tracking-widest mb-5">
+                      Muted
+                      <span className="ml-2 text-muted/50">{notificationsOff.length}</span>
+                    </h2>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                      {notificationsOff.map((show) => (
+                        <ShowCard key={show.trakt_id} show={show} />
+                      ))}
+                    </div>
+                  </section>
+                )}
+              </>
             )}
           </>
         )}

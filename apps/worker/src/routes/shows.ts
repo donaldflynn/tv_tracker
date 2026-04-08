@@ -3,7 +3,7 @@ import { TraktClient, fetchTmdbPoster, fetchSeasonStills } from '../lib/trakt';
 import { getNotificationsByUser, bulkInsertUntracked } from '../lib/db';
 import type { AppEnv } from '../types';
 import { requireAuth } from '../middleware/auth';
-import type { WatchedShow, ShowSearchResult, ShowDetail, EpisodeDetail } from '@showtracker/types';
+import type { WatchedShow, ShowSearchResult, ShowDetail, EpisodeDetail, UpcomingShow } from '@showtracker/types';
 
 const shows = new Hono<AppEnv>();
 
@@ -293,7 +293,7 @@ shows.post('/:id/watch', requireAuth, async (c) => {
   }
 
   const { trakt_show_id, season, episode, watched } = body;
-  if (!trakt_show_id || typeof season !== 'number' || typeof watched !== 'boolean') {
+  if (!trakt_show_id || typeof watched !== 'boolean') {
     return c.json({ error: 'Missing required fields' }, 400);
   }
 
@@ -301,7 +301,7 @@ shows.post('/:id/watch', requireAuth, async (c) => {
   const trakt = makeClient(c);
 
   try {
-    if (episode) {
+    if (episode && typeof season === 'number') {
       // Single episode — use air date as watched_at if it's already in the past
       const airDate = episode.first_aired ? new Date(episode.first_aired) : null;
       const watchedAt =
@@ -311,12 +311,19 @@ shows.post('/:id/watch', requireAuth, async (c) => {
       } else {
         await trakt.unwatchEpisode(episode.trakt_id);
       }
-    } else {
+    } else if (typeof season === 'number') {
       // Whole season
       if (watched) {
         await trakt.watchSeason(trakt_show_id, season, new Date().toISOString());
       } else {
         await trakt.unwatchSeason(trakt_show_id, season);
+      }
+    } else {
+      // Whole show
+      if (watched) {
+        await trakt.watchShow(trakt_show_id, new Date().toISOString());
+      } else {
+        await trakt.unwatchShow(trakt_show_id);
       }
     }
   } catch (e) {
@@ -328,6 +335,53 @@ shows.post('/:id/watch', requireAuth, async (c) => {
   cache.delete(`watched:${userId}`);
 
   return c.json({ ok: true });
+});
+
+// ── GET /api/shows/upcoming ───────────────────────────────────────────────────
+
+shows.get('/upcoming', requireAuth, async (c) => {
+  const userId = c.get('userId');
+  const cacheKey = `upcoming:${userId}`;
+  const cached = getCache<UpcomingShow[]>(cacheKey);
+  if (cached) return c.json(cached);
+
+  const trakt = makeClient(c);
+  const notifications = await getNotificationsByUser(c.env.DB, userId);
+
+  if (notifications.length === 0) return c.json([]);
+
+  const now = new Date();
+
+  // Fetch next episode for all tracked shows in parallel
+  const settled = await Promise.allSettled(
+    notifications.map(async (n) => {
+      const next = await trakt.getNextEpisode(n.trakt_show_id);
+      if (!next?.first_aired) return null;
+      if (new Date(next.first_aired) <= now) return null; // already aired
+      return {
+        trakt_id: n.trakt_show_id,
+        title: n.show_title,
+        slug: n.show_slug,
+        show_poster_url: n.show_poster_url,
+        notifications_enabled: n.notifications_enabled === 1,
+        next_episode: {
+          season: next.season,
+          number: next.number,
+          title: next.title,
+          first_aired: next.first_aired,
+          overview: next.overview,
+        },
+      } satisfies UpcomingShow;
+    }),
+  );
+
+  const result: UpcomingShow[] = settled
+    .filter((r): r is PromiseFulfilledResult<UpcomingShow> => r.status === 'fulfilled' && r.value !== null)
+    .map((r) => r.value)
+    .sort((a, b) => new Date(a.next_episode.first_aired).getTime() - new Date(b.next_episode.first_aired).getTime());
+
+  setCache(cacheKey, result);
+  return c.json(result);
 });
 
 export { shows as showRoutes };

@@ -181,6 +181,40 @@ export class TraktClient {
     if (!res.ok) throw new Error(`unwatchSeason failed (${res.status})`);
   }
 
+  async watchShow(showTraktId: number, watchedAt: string): Promise<void> {
+    const res = await fetch(`${API_BASE}/sync/history`, {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify({
+        shows: [{ watched_at: watchedAt, ids: { trakt: showTraktId } }],
+      }),
+    });
+    if (!res.ok) throw new Error(`watchShow failed (${res.status})`);
+  }
+
+  async unwatchShow(showTraktId: number): Promise<void> {
+    const res = await fetch(`${API_BASE}/sync/history/remove`, {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify({
+        shows: [{ ids: { trakt: showTraktId } }],
+      }),
+    });
+    if (!res.ok) throw new Error(`unwatchShow failed (${res.status})`);
+  }
+
+  // Returns the next episode to air, or null if show has ended / is on break
+  async getNextEpisode(idOrSlug: string | number): Promise<TraktEpisode | null> {
+    let res = await this.doFetch(`/shows/${idOrSlug}/next_episode?extended=full`);
+    if (res.status === 401) {
+      await this.refreshTokens();
+      res = await this.doFetch(`/shows/${idOrSlug}/next_episode?extended=full`);
+    }
+    if (res.status === 204 || res.status === 404) return null;
+    if (!res.ok) return null;
+    return res.json() as Promise<TraktEpisode>;
+  }
+
   // ── Static helpers ───────────────────────────────────────────────────────
 
   static countRegularSeasons(seasons: TraktSeason[]): number {

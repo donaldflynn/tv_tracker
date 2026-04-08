@@ -7,6 +7,7 @@ import { SetupPage } from './pages/SetupPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { SearchPage } from './pages/SearchPage';
 import { ShowDetailPage } from './pages/ShowDetailPage';
+import { UpcomingPage } from './pages/UpcomingPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,6 +47,14 @@ export function App() {
             element={
               <AuthGuard>
                 <ShowDetailPage />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/upcoming"
+            element={
+              <AuthGuard>
+                <UpcomingPage />
               </AuthGuard>
             }
           />

@@ -1,6 +1,6 @@
 import { useParams, Link } from 'react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Bell, BellOff, Plus, Check, Star, Clock, Tv2 } from 'lucide-react';
+import { ArrowLeft, Bell, BellOff, Plus, Check, Star, Clock, Tv2, CheckCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '../lib/api';
 import { NotificationToggle } from '../components/NotificationToggle';
@@ -32,6 +32,17 @@ export function ShowDetailPage() {
       toast.success(`Added ${show!.title} to tracker`);
     },
     onError: () => toast.error('Failed to add show'),
+  });
+
+  const watchAllMutation = useMutation({
+    mutationFn: (watched: boolean) =>
+      api.post(`/shows/${slug}/watch`, { trakt_show_id: show!.trakt_id, watched }),
+    onSuccess: (_, watched) => {
+      queryClient.invalidateQueries({ queryKey: ['show', slug] });
+      queryClient.invalidateQueries({ queryKey: ['shows', 'watched'] });
+      toast.success(watched ? `Marked all of ${show!.title} as watched` : `Unmarked all of ${show!.title}`);
+    },
+    onError: () => toast.error('Failed to update watch status'),
   });
 
   if (isLoading) {
@@ -150,7 +161,7 @@ export function ShowDetailPage() {
             )}
 
             {/* Notification actions */}
-            <div className="flex items-center gap-3 mt-2">
+            <div className="flex flex-wrap items-center gap-3 mt-2">
               {show.in_tracker ? (
                 <>
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-surface border border-border rounded-lg">
@@ -177,6 +188,25 @@ export function ShowDetailPage() {
                 >
                   <Plus size={15} />
                   Add to tracker
+                </button>
+              )}
+
+              {show.season_count > 0 && (
+                <button
+                  onClick={() => {
+                    const totalWatched = show.seasons.reduce((a, s) => a + s.watched_count, 0);
+                    const totalEps = show.seasons.reduce((a, s) => a + (s.episode_count ?? 0), 0);
+                    watchAllMutation.mutate(totalWatched < totalEps);
+                  }}
+                  disabled={watchAllMutation.isPending}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-surface border border-border text-muted hover:text-text hover:border-accent/40 transition-colors disabled:opacity-40"
+                >
+                  <CheckCheck size={13} />
+                  {(() => {
+                    const totalWatched = show.seasons.reduce((a, s) => a + s.watched_count, 0);
+                    const totalEps = show.seasons.reduce((a, s) => a + (s.episode_count ?? 0), 0);
+                    return totalWatched >= totalEps && totalEps > 0 ? 'Unwatch all' : 'Mark all watched';
+                  })()}
                 </button>
               )}
             </div>
