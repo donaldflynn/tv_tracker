@@ -4,6 +4,7 @@ compatibility_date = "2024-09-01"
 
 [assets]
 directory = "dist"
+binding = "ASSETS"
 not_found_handling = "single-page-application"
 
 # Service binding — routes /api/* internally to the API worker.
