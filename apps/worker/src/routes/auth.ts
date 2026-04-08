@@ -56,7 +56,8 @@ auth.get('/callback', async (c) => {
   let me;
   try {
     me = await TraktClient.getAnonymousMe(tokens.access_token, c.env.TRAKT_CLIENT_ID);
-  } catch {
+  } catch (e) {
+    console.error('Profile fetch failed:', e);
     return c.json({ error: 'Failed to fetch Trakt profile' }, 500);
   }
 

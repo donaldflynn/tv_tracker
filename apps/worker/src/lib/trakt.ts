@@ -50,7 +50,7 @@ export class TraktClient {
 
   private headers(): HeadersInit {
     return {
-      'Content-Type': 'application/json',
+      ...SERVER_HEADERS,
       'trakt-api-version': '2',
       'trakt-api-key': this.clientId,
       Authorization: `Bearer ${this.accessToken}`,
@@ -164,13 +164,16 @@ export class TraktClient {
   ): Promise<TraktMe> {
     const res = await fetch(`${API_BASE}/users/me`, {
       headers: {
-        'Content-Type': 'application/json',
+        ...SERVER_HEADERS,
         'trakt-api-version': '2',
         'trakt-api-key': clientId,
         Authorization: `Bearer ${accessToken}`,
       },
     });
-    if (!res.ok) throw new Error('Failed to fetch user profile');
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`Failed to fetch user profile (${res.status}): ${body}`);
+    }
     return res.json() as Promise<TraktMe>;
   }
 }
