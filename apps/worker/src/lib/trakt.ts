@@ -146,7 +146,10 @@ export class TraktClient {
       }),
     });
 
-    if (!res.ok) throw new Error('Code exchange failed');
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`Code exchange failed (${res.status}): ${body}`);
+    }
     return res.json() as Promise<TraktTokenResponse>;
   }
 

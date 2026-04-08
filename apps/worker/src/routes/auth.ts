@@ -48,7 +48,8 @@ auth.get('/callback', async (c) => {
       clientSecret: c.env.TRAKT_CLIENT_SECRET,
       redirectUri: c.env.TRAKT_REDIRECT_URI,
     });
-  } catch {
+  } catch (e) {
+    console.error('Code exchange failed:', e);
     return c.json({ error: 'Failed to exchange code' }, 500);
   }
 
