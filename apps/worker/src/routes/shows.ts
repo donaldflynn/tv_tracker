@@ -125,6 +125,7 @@ shows.get('/watched', requireAuth, async (c) => {
       in_tracker: !!notif,
       notifications_enabled: notif ? notif.notifications_enabled === 1 : false,
       show_poster_url: notif?.show_poster_url ?? null,
+      last_episode_aired_at: notif?.last_episode_aired_at ?? null,
     };
   });
 

@@ -119,6 +119,7 @@ export interface WatchedShow {
   year: number;
   slug: string;
   last_watched_at: string;
+  last_episode_aired_at: string | null;
   plays: number;
   in_tracker: boolean;
   notifications_enabled: boolean;

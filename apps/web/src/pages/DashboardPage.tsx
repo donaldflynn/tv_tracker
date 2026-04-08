@@ -21,9 +21,9 @@ function sortShows(shows: WatchedShow[], key: SortKey): WatchedShow[] {
   return [...shows].sort((a, b) => {
     switch (key) {
       case 'latest_released':
-        return (b.year ?? 0) - (a.year ?? 0);
+        return (b.last_episode_aired_at ?? '').localeCompare(a.last_episode_aired_at ?? '');
       case 'first_released':
-        return (a.year ?? 0) - (b.year ?? 0);
+        return (a.last_episode_aired_at ?? '').localeCompare(b.last_episode_aired_at ?? '');
       case 'recently_watched':
         return new Date(b.last_watched_at).getTime() - new Date(a.last_watched_at).getTime();
     }
