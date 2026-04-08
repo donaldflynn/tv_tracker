@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
+import { getCookie, deleteCookie } from 'hono/cookie';
 import {
   createSessionToken,
   createSignedState,
@@ -70,14 +70,7 @@ auth.get('/callback', async (c) => {
     });
 
     const sessionToken = await createSessionToken(existingUser.id, c.env.JWT_SECRET);
-    setCookie(c, 'session', sessionToken, {
-      httpOnly: true,
-      sameSite: 'Lax',
-      secure: true,
-      maxAge: 30 * 24 * 60 * 60,
-      path: '/',
-    });
-
+    c.header('X-Set-Session', sessionToken);
     return c.redirect('/');
   }
 
@@ -125,14 +118,7 @@ auth.post('/setup', async (c) => {
   });
 
   const sessionToken = await createSessionToken(userId, c.env.JWT_SECRET);
-  setCookie(c, 'session', sessionToken, {
-    httpOnly: true,
-    sameSite: 'Lax',
-    secure: true,
-    maxAge: 30 * 24 * 60 * 60,
-    path: '/',
-  });
-
+  c.header('X-Set-Session', sessionToken);
   return c.json({ ok: true });
 });
 
@@ -146,7 +132,7 @@ auth.get('/me', requireAuth, (c) => {
 // ── POST /api/auth/logout ─────────────────────────────────────────────────────
 
 auth.post('/logout', (c) => {
-  deleteCookie(c, 'session', { path: '/' });
+  c.header('X-Clear-Session', '1');
   return c.json({ ok: true });
 });
 
