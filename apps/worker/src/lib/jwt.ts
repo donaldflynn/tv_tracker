@@ -20,9 +20,10 @@ export async function verifySessionToken(
   secret: string,
 ): Promise<{ sub: string } | null> {
   try {
-    const payload = await verify(token, secret);
+    const payload = await verify(token, secret, 'HS256');
     return payload as { sub: string };
-  } catch {
+  } catch (e) {
+    console.error('[jwt] verify failed:', e, '| secret set:', !!secret);
     return null;
   }
 }

@@ -124,7 +124,9 @@ export async function getEnabledNotificationsForCron(
   db: D1Database,
 ): Promise<{ user_id: number }[]> {
   const result = await db
-    .prepare('SELECT DISTINCT user_id FROM show_notifications WHERE notifications_enabled = 1')
+    .prepare(
+      'SELECT DISTINCT user_id FROM show_notifications WHERE notifications_enabled = 1 OR needs_season_init = 1',
+    )
     .all<{ user_id: number }>();
   return result.results;
 }
@@ -135,7 +137,7 @@ export async function getEnabledShowsForUser(
 ): Promise<DbShowNotification[]> {
   const result = await db
     .prepare(
-      'SELECT * FROM show_notifications WHERE user_id = ? AND notifications_enabled = 1',
+      'SELECT * FROM show_notifications WHERE user_id = ? AND (notifications_enabled = 1 OR needs_season_init = 1)',
     )
     .bind(userId)
     .all<DbShowNotification>();
@@ -159,6 +161,38 @@ export async function touchLastChecked(db: D1Database, id: number): Promise<void
   await db
     .prepare('UPDATE show_notifications SET last_checked_at = unixepoch() WHERE id = ?')
     .bind(id)
+    .run();
+}
+
+export async function bulkInsertUntracked(
+  db: D1Database,
+  userId: number,
+  shows: Array<{ trakt_show_id: number; show_title: string; show_slug: string }>,
+): Promise<void> {
+  if (shows.length === 0) return;
+  const stmts = shows.map((s) =>
+    db
+      .prepare(
+        `INSERT INTO show_notifications
+           (user_id, trakt_show_id, show_title, show_slug, last_known_season, needs_season_init)
+         VALUES (?, ?, ?, ?, 0, 1)
+         ON CONFLICT(user_id, trakt_show_id) DO NOTHING`,
+      )
+      .bind(userId, s.trakt_show_id, s.show_title, s.show_slug),
+  );
+  await db.batch(stmts);
+}
+
+export async function initializeShowSeason(
+  db: D1Database,
+  id: number,
+  lastKnownSeason: number,
+): Promise<void> {
+  await db
+    .prepare(
+      'UPDATE show_notifications SET last_known_season = ?, needs_season_init = 0, last_checked_at = unixepoch() WHERE id = ?',
+    )
+    .bind(lastKnownSeason, id)
     .run();
 }
 

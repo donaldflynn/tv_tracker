@@ -19,6 +19,7 @@ export interface DbShowNotification {
   show_poster_url: string | null;
   notifications_enabled: number; // 0 | 1
   last_known_season: number;
+  needs_season_init: number; // 0 | 1 — if 1, cron sets season count without notifying
   last_checked_at: number | null;
   created_at: number;
 }

@@ -1,5 +1,5 @@
 import type { Bindings } from './types';
-import { getUserById, getEnabledNotificationsForCron, getEnabledShowsForUser, updateLastKnownSeason, touchLastChecked } from './lib/db';
+import { getUserById, getEnabledNotificationsForCron, getEnabledShowsForUser, updateLastKnownSeason, touchLastChecked, initializeShowSeason } from './lib/db';
 import { TraktClient } from './lib/trakt';
 import { sendNewSeasonEmail } from './lib/email';
 
@@ -54,7 +54,11 @@ async function checkUserShows(env: Bindings, userId: number): Promise<void> {
       const seasons = await trakt.getShowSeasons(show.trakt_show_id);
       const currentSeasonCount = TraktClient.countRegularSeasons(seasons);
 
-      if (currentSeasonCount > show.last_known_season) {
+      if (show.needs_season_init) {
+        // Newly auto-synced show — record current season count without notifying
+        await initializeShowSeason(env.DB, show.id, currentSeasonCount);
+        console.log(`[cron] Initialized ${show.show_title}: ${currentSeasonCount} seasons`);
+      } else if (currentSeasonCount > show.last_known_season) {
         console.log(
           `[cron] New season detected: ${show.show_title} — ` +
             `${show.last_known_season} → ${currentSeasonCount}`,

@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { TraktClient, fetchTmdbPoster } from '../lib/trakt';
-import { getNotificationsByUser } from '../lib/db';
+import { getNotificationsByUser, bulkInsertUntracked } from '../lib/db';
 import type { AppEnv } from '../types';
 import { requireAuth } from '../middleware/auth';
 import type { WatchedShow, ShowSearchResult, ShowDetail } from '@showtracker/types';
@@ -57,8 +57,24 @@ shows.get('/watched', requireAuth, async (c) => {
     return c.json({ error: 'Failed to fetch shows from Trakt' }, 502);
   }
 
-  const notifications = await getNotificationsByUser(c.env.DB, user.id);
+  let notifications = await getNotificationsByUser(c.env.DB, user.id);
   const notifMap = new Map(notifications.map((n) => [n.trakt_show_id, n]));
+
+  // Auto-sync: insert any watched shows not yet in the tracker
+  const untracked = watchedShows.filter((w) => !notifMap.has(w.show.ids.trakt));
+  if (untracked.length > 0) {
+    await bulkInsertUntracked(
+      c.env.DB,
+      user.id,
+      untracked.map((w) => ({
+        trakt_show_id: w.show.ids.trakt,
+        show_title: w.show.title,
+        show_slug: w.show.ids.slug,
+      })),
+    );
+    notifications = await getNotificationsByUser(c.env.DB, user.id);
+    notifications.forEach((n) => notifMap.set(n.trakt_show_id, n));
+  }
 
   const result: WatchedShow[] = watchedShows.map((w) => {
     const notif = notifMap.get(w.show.ids.trakt);

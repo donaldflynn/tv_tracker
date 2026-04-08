@@ -25,8 +25,8 @@ export function DashboardPage() {
     }
   };
 
-  const tracked = shows?.filter((s) => s.in_tracker) ?? [];
-  const unwatched = shows?.filter((s) => !s.in_tracker) ?? [];
+  const notificationsOn = shows?.filter((s) => s.notifications_enabled) ?? [];
+  const notificationsOff = shows?.filter((s) => !s.notifications_enabled) ?? [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -86,14 +86,14 @@ export function DashboardPage() {
 
         {!isLoading && !isError && (
           <>
-            {tracked.length === 0 && <EmptyState />}
+            {shows?.length === 0 && <EmptyState />}
 
-            {tracked.length > 0 && (
+            {notificationsOn.length > 0 && (
               <section className="mb-12">
                 <div className="flex items-center justify-between mb-5">
                   <h2 className="text-sm font-semibold text-muted uppercase tracking-widest">
-                    Tracked shows
-                    <span className="ml-2 text-accent">{tracked.length}</span>
+                    Watching
+                    <span className="ml-2 text-accent">{notificationsOn.length}</span>
                   </h2>
                   <Link
                     to="/search"
@@ -103,21 +103,21 @@ export function DashboardPage() {
                   </Link>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                  {tracked.map((show) => (
+                  {notificationsOn.map((show) => (
                     <ShowCard key={show.trakt_id} show={show} />
                   ))}
                 </div>
               </section>
             )}
 
-            {unwatched.length > 0 && (
+            {notificationsOff.length > 0 && (
               <section>
                 <h2 className="text-sm font-semibold text-muted uppercase tracking-widest mb-5">
-                  Watch history
-                  <span className="ml-2 text-muted/50">{unwatched.length}</span>
+                  Muted
+                  <span className="ml-2 text-muted/50">{notificationsOff.length}</span>
                 </h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                  {unwatched.map((show) => (
+                  {notificationsOff.map((show) => (
                     <ShowCard key={show.trakt_id} show={show} />
                   ))}
                 </div>
