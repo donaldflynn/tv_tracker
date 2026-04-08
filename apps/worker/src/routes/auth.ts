@@ -4,6 +4,8 @@ import {
   createSessionToken,
   createPendingAuthToken,
   verifyPendingAuthToken,
+  createSignedState,
+  verifySignedState,
 } from '../lib/jwt';
 import { getUserBySlug, createUser, updateUserTokens } from '../lib/db';
 import { TraktClient } from '../lib/trakt';
@@ -14,16 +16,10 @@ const auth = new Hono<AppEnv>();
 
 // ── GET /api/auth/login ───────────────────────────────────────────────────────
 
-auth.get('/login', (c) => {
-  const state = crypto.randomUUID();
-
-  setCookie(c, 'oauth_state', state, {
-    httpOnly: true,
-    sameSite: 'Lax',
-    secure: true,
-    maxAge: 600,
-    path: '/',
-  });
+auth.get('/login', async (c) => {
+  // State is a signed nonce — no cookie needed. The HMAC signature lets us
+  // verify on callback that we issued this state, preventing CSRF.
+  const state = await createSignedState(c.env.JWT_SECRET);
 
   const params = new URLSearchParams({
     response_type: 'code',
@@ -39,11 +35,8 @@ auth.get('/login', (c) => {
 
 auth.get('/callback', async (c) => {
   const { code, state } = c.req.query();
-  const storedState = getCookie(c, 'oauth_state');
 
-  deleteCookie(c, 'oauth_state', { path: '/' });
-
-  if (!code || !state || state !== storedState) {
+  if (!code || !state || !(await verifySignedState(state, c.env.JWT_SECRET))) {
     return c.json({ error: 'Invalid OAuth state' }, 400);
   }
 
@@ -88,7 +81,7 @@ auth.get('/callback', async (c) => {
     return c.redirect('/');
   }
 
-  // New user — store pending auth, redirect to setup
+  // New user — store pending auth in a signed cookie, redirect to setup
   const pendingToken = await createPendingAuthToken(
     {
       trakt_slug: me.username,
